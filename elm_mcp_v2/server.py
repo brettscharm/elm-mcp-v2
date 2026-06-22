@@ -129,9 +129,35 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     if name == "elm_health":
         if _HUB is not None and _HUB.connected:
             n_hub = len(await _HUB.list_tools())
-            status = (f"🟢 **Federated** — hub `{_HUB.server_name}` v{_HUB.server_version} "
-                      f"is connected.\n- Hub tools: **{n_hub}**\n- elm-mcp tools: "
-                      f"**{len(_OUR_TOOLS)}**\n- Total available: **{n_hub + len(_OUR_TOOLS)}**")
+            # A successful MCP handshake does NOT mean the hub token still works
+            # — tokens expire. Do a live, no-arg probe call so a stale token is
+            # reported clearly instead of a misleading "healthy".
+            # Probe the requirements (RM) backend — that's the auth that matters
+            # for ELM work, and it returns a clean 401 when the token is stale.
+            auth, detail = "unknown", ""
+            try:
+                probe = await _HUB.call_tool("list_project_areas", {"app_type": "RM"})
+                ptxt = " ".join(getattr(c, "text", "") for c in probe.content)
+                if probe.isError or "401" in ptxt or "Invalid access token" in ptxt:
+                    auth, detail = "bad", ptxt[:200]
+                else:
+                    auth = "ok"
+            except Exception as e:  # noqa: BLE001
+                auth, detail = "probe-failed", f"{type(e).__name__}: {e}"
+
+            if auth == "ok":
+                status = (f"🟢 **Federated & authenticated** — hub `{_HUB.server_name}` "
+                          f"v{_HUB.server_version}; a live data call succeeded.\n"
+                          f"- Hub tools: **{n_hub}** · elm-mcp tools: **{len(_OUR_TOOLS)}** "
+                          f"· total **{n_hub + len(_OUR_TOOLS)}**")
+            elif auth == "bad":
+                status = (f"🟠 **Hub reachable, but the token is REJECTED.** The MCP "
+                          f"handshake works, but live data calls return 401 — your "
+                          f"`ELM_HUB_TOKEN` has expired or been revoked. **Refresh the "
+                          f"token and restart.**\n> {detail}")
+            else:
+                status = (f"🟠 **Hub connected, but a live probe call failed** — tools "
+                          f"are listed but data calls may not work.\n> {detail}")
         else:
             status = ("🟠 **Standalone** — the engineering-ai-hub is not configured/"
                       "reachable, so only elm-mcp's own tools are available.\n"
@@ -150,12 +176,16 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         prefix = "✓ " if res.get("updated") else ""
         return [TextContent(type="text", text=f"{prefix}{res['message']}")]
 
-    # --- federated hub tools: forward straight through ---
+    # --- federated hub tools: forward the FULL CallToolResult straight through ---
+    # Returning the hub's CallToolResult verbatim preserves its content +
+    # structuredContent + isError, and the low-level server returns it as-is
+    # (so we don't re-validate the hub's outputSchema and trip "outputSchema
+    # defined but no structured output returned"). It also lets the hub's real
+    # responses — 401s, missing-arg validation, actual data — reach the host
+    # instead of being masked by our wrapper.
     if _HUB is not None and _HUB.connected:
         try:
-            content = await _HUB.call_tool(name, arguments)
-            # hub returns mcp content blocks; pass them through unchanged
-            return content  # type: ignore[return-value]
+            return await _HUB.call_tool(name, arguments)
         except Exception as e:  # noqa: BLE001
             return [TextContent(type="text", text=(
                 f"Error calling hub tool `{name}`: {type(e).__name__}: {e}"

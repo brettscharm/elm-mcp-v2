@@ -117,9 +117,14 @@ class HubSession:
             logger.warning("hub list_tools refresh failed (%s) — using cache", type(e).__name__)
         return self.tools_cache
 
-    async def call_tool(self, name: str, arguments: dict[str, Any]) -> list:
-        """Forward a tool call to the hub; return its content blocks."""
+    async def call_tool(self, name: str, arguments: dict[str, Any]):
+        """Forward a tool call to the hub and return its FULL CallToolResult.
+
+        Returning the whole result (not just .content) preserves
+        structuredContent + isError, and — because the low-level server passes
+        a CallToolResult through verbatim — avoids re-validating the hub's
+        outputSchema on our side (which would otherwise fail with
+        "outputSchema defined but no structured output returned")."""
         if not self.connected or self.session is None:
             raise RuntimeError("hub not connected")
-        result = await self.session.call_tool(name, arguments or {})
-        return list(result.content)
+        return await self.session.call_tool(name, arguments or {})
