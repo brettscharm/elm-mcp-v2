@@ -6,4 +6,4 @@ turn an MCP *client* of the official hub, re-exposing the hub's correct
 primitives + adding our authoring/workflow tools on top.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

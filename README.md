@@ -48,7 +48,37 @@ and add the authoring intelligence on top.
 
 ## Install
 
-Add one server to your AI host's MCP config:
+### Option A — download + point at the file (best for locked-down machines)
+
+No `pip`, no `uv`, no terminal commands you have to type — ideal where corporate
+policy blocks running commands.
+
+1. **Download** — green **Code** button → **Download ZIP** → extract → folder
+   `elm-mcp-v2-main`.
+2. **Point your host at `run_server.py`** with any Python 3.10+:
+   ```json
+   {
+     "mcpServers": {
+       "elm-mcp-v2": {
+         "command": "python3",
+         "args": ["/path/to/elm-mcp-v2-main/run_server.py"],
+         "env": {
+           "ELM_HUB_URL": "https://your-hub-host/mcp/",
+           "ELM_HUB_TOKEN": "your-hub-bearer-token"
+         }
+       }
+     }
+   }
+   ```
+   (Windows: `"command": "py"`. macOS w/ Anaconda: `"command": "/opt/anaconda3/bin/python3"`.)
+3. Fully quit + reopen your host. Ask **"run elm_health"**.
+
+On first launch `run_server.py` **self-installs its deps** (`mcp`, `httpx`)
+*inside the process your host spawns* — so you never type a pip command. It then
+runs the package straight from the extracted folder. (First launch needs PyPI
+access once; instant after. Fully air-gapped? See *bundled deps* in the roadmap.)
+
+### Option B — `uvx` one-paste (if you have `uv`)
 
 ```json
 {
@@ -56,24 +86,20 @@ Add one server to your AI host's MCP config:
     "elm-mcp-v2": {
       "command": "uvx",
       "args": ["--from", "git+https://github.com/brettscharm/elm-mcp-v2", "elm-mcp-v2"],
-      "env": {
-        "ELM_HUB_URL": "https://your-hub-host/mcp/",
-        "ELM_HUB_TOKEN": "your-hub-bearer-token"
-      }
+      "env": { "ELM_HUB_URL": "https://your-hub-host/mcp/", "ELM_HUB_TOKEN": "your-hub-bearer-token" }
     }
   }
 }
 ```
 
-(`uv` provisions Python + deps automatically. No clone, no pip.) Then fully
-quit and reopen your host. Ask **"run elm_health"** to confirm federation.
+`uv` provisions Python + deps automatically. No clone.
 
-Local dev:
+### Local dev
 
 ```bash
 git clone https://github.com/brettscharm/elm-mcp-v2 && cd elm-mcp-v2
 pip install -e .
-ELM_HUB_URL=… ELM_HUB_TOKEN=… elm-mcp-v2     # speaks MCP over stdio
+ELM_HUB_URL=… ELM_HUB_TOKEN=… elm-mcp-v2     # or:  python run_server.py
 ```
 
 ### Config (env)
