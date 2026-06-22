@@ -73,6 +73,20 @@ _OUR_TOOLS: list[Tool] = [
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=True),
     ),
     Tool(
+        name="elm_update",
+        description=(
+            "Update elm-mcp v2 in place to the latest GitHub release. Works for "
+            "the download / point-at-a-file install — it fetches the latest "
+            "version and replaces the files in the folder your host points at "
+            "(no git needed). Use when the user says 'update yourself', 'update "
+            "elm mcp', 'pull the latest', or 'are you up to date'. Tell the user "
+            "to fully restart their host afterward. (For a pip/uvx install it "
+            "instead tells you the uvx/pip command to run.)"
+        ),
+        inputSchema={"type": "object", "properties": {}, "required": []},
+        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True),
+    ),
+    Tool(
         name="elm_lint_requirement",
         description=(
             "Check the quality of a requirement statement BEFORE writing it to "
@@ -129,6 +143,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         text = arguments.get("text", "")
         rep = _lint.lint_requirement(text)
         return [TextContent(type="text", text=_lint.format_report(text, rep))]
+
+    if name == "elm_update":
+        from . import update as _update
+        res = _update.self_update()
+        prefix = "✓ " if res.get("updated") else ""
+        return [TextContent(type="text", text=f"{prefix}{res['message']}")]
 
     # --- federated hub tools: forward straight through ---
     if _HUB is not None and _HUB.connected:

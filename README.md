@@ -46,15 +46,15 @@ and add the authoring intelligence on top.
 > The hub is IBM-hosted and must be provisioned for you (that's where the token
 > comes from). v2 can't bundle it — it federates it.
 
-## Install
+## Install — download + point at the file
 
-### Option A — download + point at the file (best for locked-down machines)
+No `pip`, no `uv`, no terminal commands you have to type. This works on
+locked-down machines: the server installs its own dependencies on first launch
+*inside the process your host spawns* — not as a command you run.
 
-No `pip`, no `uv`, no terminal commands you have to type — ideal where corporate
-policy blocks running commands.
-
-1. **Download** — green **Code** button → **Download ZIP** → extract → folder
-   `elm-mcp-v2-main`.
+1. **Download** — green **Code** button → **Download ZIP** → **Extract All** →
+   folder `elm-mcp-v2-main`. Keep it somewhere stable (your host runs the server
+   from here — don't delete it).
 2. **Point your host at `run_server.py`** with any Python 3.10+:
    ```json
    {
@@ -70,37 +70,23 @@ policy blocks running commands.
      }
    }
    ```
-   (Windows: `"command": "py"`. macOS w/ Anaconda: `"command": "/opt/anaconda3/bin/python3"`.)
-3. Fully quit + reopen your host. Ask **"run elm_health"**.
+   - **macOS (Anaconda):** `"command": "/opt/anaconda3/bin/python3"`
+   - **Windows:** `"command": "py"`
+3. Fully quit + reopen your host. Ask **"run elm_health"** → expect 🟢 Federated.
 
-On first launch `run_server.py` **self-installs its deps** (`mcp`, `httpx`)
-*inside the process your host spawns* — so you never type a pip command. It then
-runs the package straight from the extracted folder. (First launch needs PyPI
-access once; instant after. Fully air-gapped? See *bundled deps* in the roadmap.)
+First launch self-installs `mcp` + `httpx` (~15–30s; needs PyPI access once),
+then instant. No `ELM_HUB_TOKEN`? It runs **standalone** with just elm-mcp's own
+tools. Fully air-gapped (no PyPI at all)? See *bundled deps* in the roadmap.
 
-### Option B — `uvx` one-paste (if you have `uv`)
+## Updating
 
-```json
-{
-  "mcpServers": {
-    "elm-mcp-v2": {
-      "command": "uvx",
-      "args": ["--from", "git+https://github.com/brettscharm/elm-mcp-v2", "elm-mcp-v2"],
-      "env": { "ELM_HUB_URL": "https://your-hub-host/mcp/", "ELM_HUB_TOKEN": "your-hub-bearer-token" }
-    }
-  }
-}
-```
+Say **"update yourself"** in your host (calls `elm_update`). It downloads the
+latest release from GitHub and **replaces the files in the folder your host
+points at** — no git, no manual re-download. Then fully restart your host.
+(Prefer doing it by hand? Re-download the ZIP and replace the folder.)
 
-`uv` provisions Python + deps automatically. No clone.
-
-### Local dev
-
-```bash
-git clone https://github.com/brettscharm/elm-mcp-v2 && cd elm-mcp-v2
-pip install -e .
-ELM_HUB_URL=… ELM_HUB_TOKEN=… elm-mcp-v2     # or:  python run_server.py
-```
+> Dev / `uv` users: `pip install -e .`, or
+> `uvx --from git+https://github.com/brettscharm/elm-mcp-v2 elm-mcp-v2`, also work.
 
 ### Config (env)
 
@@ -122,15 +108,18 @@ ELM_HUB_URL=… ELM_HUB_TOKEN=… elm-mcp-v2     # or:  python run_server.py
   the hub, streaming its content back unchanged
   ([`elm_mcp_v2/server.py`](elm_mcp_v2/server.py)).
 
-## Status — v0.1.0 (foundation)
+## Status — v0.3.0
 
 What's here:
 - ✅ The federation core (connect → mirror tools → forward calls).
-- ✅ `elm_health` (federation status) and `elm_lint_requirement` (quality gate)
-  as the first native tools.
+- ✅ Native tools: `elm_health` (federation status), `elm_lint_requirement`
+  (quality gate), `elm_update` (in-place self-update for the download install).
+- ✅ `run_server.py` — self-heal launcher (download + point-at-a-file; installs
+  its own deps on first launch).
 - ✅ Standalone fallback.
 
 Roadmap (porting elm-mcp's authoring value on top of the hub):
+- [ ] bundled-deps build for fully air-gapped machines
 - [ ] `elm_draft_requirements` / Plan-Mode deep-drill → structured draft
 - [ ] commit orchestration (drive the hub's `create_requirement` + changeset flow)
 - [ ] `elm_find_similar` (semantic dedup over hub reads)
