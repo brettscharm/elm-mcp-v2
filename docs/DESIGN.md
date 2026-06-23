@@ -12,6 +12,35 @@ I/O before implementation.
 
 ---
 
+## 0. Approach (decided)
+
+Two course-corrections that shape everything below:
+
+**A. Supplement, don't replace.** The hub's core tools *work* — a model can drive
+their discovery dance (proven in real use). So we do **not** hide/rewrap them
+wholesale. Instead:
+- **Keep the hub's core tools exposed** (passthrough; correct + working).
+- **Supplement on their outputs** — a thin enrichment layer (links, dedup,
+  formatting) and analysis tools that operate on the data the hub fetches.
+- **Add a lot of net-new tools** the hub's MCP simply doesn't have.
+- Add a clean **wrapper only where the hub has *no* tool at all** (a real
+  "list modules", a deduped+linked search) — gap-filling, not replacing.
+
+This is lower-risk than §3's original "wrap-and-hide" framing — read the wrapper
+table there as *gap-fillers + optional niceties*, not "replace everything."
+
+**B. Authoring & analysis, NOT code generation.** v1's identity was
+`build_new_project` (idea → … → code). That's the wrong center of gravity — the
+hub feels nicer precisely because it's about rich *interaction* with ELM data,
+not writing code. v2's value, and the "ton more tools", are **engineering-
+assistant capabilities**: understand / summarize / translate, quality
+(lint·coach·score), review·coverage, traceability·impact, compliance, and
+drafting clean requirements. Code-gen survives only as a minor bridge, never the
+identity. **The identity is: make ELM data understandable, high-quality, and
+traceable.**
+
+---
+
 ## 1. What the official hub actually is
 
 **IBM Engineering AI Hub** (currently 1.3) is a governed-AI add-on to IBM ELM.
@@ -149,10 +178,12 @@ Decisions, several confirmed by the proxy-pattern research
 ([gateway patterns](https://chatforest.com/guides/mcp-gateway-proxy-patterns/),
 [aggregation state-of-ecosystem](https://www.heyitworks.tech/blog/mcp-aggregation-gateway-proxy-tools-q1-2026)):
 
-1. **Curate, don't dump.** `list_tools` exposes our `elm_*` + SysML passthrough;
-   the brutal req/workitem/test primitives go in `_HIDE_HUB_TOOLS` (still
-   callable internally by our tools). Cuts tool-count bloat and stops the model
-   reaching for UUID-soup tools.
+1. **Supplement, don't hide (by default).** Per §0A: `list_tools` exposes the
+   hub's working tools (passthrough) **plus** our `elm_*` supplements + SysML.
+   Add to `_HIDE_HUB_TOOLS` only when a hub tool is *genuinely* superseded by a
+   cleaner gap-filler (e.g. once `elm_modules` exists, hide the raw module-hunt
+   path) — not as a blanket policy. Keeps the surface manageable without
+   rebuilding what already works.
 2. **Escape hatch.** Keep a `retrieve_tools(query)` / `elm_raw_call(tool, args)`
    so nothing is *lost* — power users / coverage gaps can still reach any hub
    tool. (Mirrors the `retrieve_tools` discovery pattern.)
