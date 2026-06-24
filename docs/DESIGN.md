@@ -233,3 +233,34 @@ Decisions, several confirmed by the proxy-pattern research
 **IBM's Engineering AI Hub governs the door and keeps the data correct; elm-mcp
 v2 makes that data usable — name-based, link-rich, one-call, and with the
 authoring intelligence the Hub only exposes inside its own UI.**
+
+---
+
+## 8. Implementation rules proven live (FCS demo, GC project)
+
+Built a real demo through the hub in `Brett Sandbox (Requirements - GC)` — 6
+reqs + 3 tests + 3 work items + 6 links, all in one global config. What it
+taught us:
+
+1. **Compute traceability FORWARD, never backward.** A `validates` /
+   `implements` link is stored on the **test / work-item** side. Querying *from
+   the requirement* (`list_linked_testartifacts(req)`, i.e. the `validatedBy`
+   back-link) returns **nothing**. To find untested requirements you MUST: list
+   the tests + work items, read *their* `list_linked_requirements`, union the
+   covered set, then `all_reqs − covered = gaps`. This is the single thing v1's
+   `find_traceability_gaps` gets wrong (it scans reqs backward → every req looks
+   untested). `elm_review`/`elm_coverage` must invert.
+2. **GC writes don't need a changeset for demo/bulk data.** `create_requirement`
+   with `configuration_url = <stream_url>` writes straight into the stream. The
+   `create_requirement_change_set → … → deliver` flow is the *formal* isolated-
+   change workflow — overkill unless you specifically want review isolation.
+3. **v1 cannot operate in GC at all** — `create_requirement` → HTTP **410**
+   (needs a config context it has no concept of), same root cause as
+   `get_modules` returning 0. Confirms primitives must go through the hub.
+4. **Permissions are per-project-area.** Same user could create reqs in a non-GC
+   RM project but got 403 on the non-GC QM/EWM projects; create rights were in
+   the `- GC` variants. Tools must surface the exact 403 (they do) and the
+   resolver should prefer the project family the user can actually write to.
+5. **TX (core) vs BI (binding) URLs both appear** in link results for the same
+   artifact — dedupe by the human id/title, and when reporting coverage match on
+   the core (`TX_`/`TX` create id), not the module binding (`BI_`).
